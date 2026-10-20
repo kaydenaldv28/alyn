@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gema Sepercik Kenangan | Whispers in the Dark</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Plus+Jakarta+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        serif: ['Cormorant Garamond', 'serif'],
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        sad: {
+                            900: '#07090e',
+                            800: '#0f131d',
+                            700: '#1a202c',
+                            accent: '#64748b',
+                            glow: '#38bdf8',
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-8px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #07090e;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+        
+        .glass-panel {
+            background: rgba(15, 19, 29, 0.65);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .text-glow {
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
+        }
+
+        .highlight-text {
+            background: linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(148,163,184,0.8) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-sad-900 text-slate-300 font-sans selection:bg-slate-700 selection:text-white overflow-x-hidden min-h-screen">
+
+    <!-- Canvas Canvas Background (Rain & Stars) -->
+    <canvas id="ambientCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
+
+    <!-- YouTube Hidden Player (Invisible IFrame API Container) -->
+    <div id="youtube-player" class="hidden"></div>
+
+    <!-- Enter / Unmute Overlay Gate -->
+    <div id="entryOverlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-sad-900/95 backdrop-blur-md transition-opacity duration-1000 p-6 text-center">
+        <div class="max-w-md space-y-6 animate-float">
+            <div class="w-16 h-16 rounded-full bg-slate-800/80 border border-slate-700/50 flex items-center justify-center mx-auto shadow-2xl text-slate-400">
+                <i data-lucide="headphones" class="w-8 h-8"></i>
+            </div>
+            <div class="space-y-2">
+                <h2 class="font-serif text-2xl md:text-3xl text-slate-200 tracking-wide">Gema Kenangan</h2>
+                <p class="text-xs md:text-sm text-slate-400 font-light">Gunakan headphone untuk pengalaman mendengar & membaca yang lebih mendalam.</p>
+            </div>
+            <button id="btnEnter" class="px-8 py-3.5 rounded-full glass-panel border border-slate-600/40 text-slate-200 text-sm tracking-wider uppercase hover:border-slate-400 hover:bg-slate-800/80 transition-all duration-300 shadow-lg hover:shadow-cyan-900/20 active:scale-95">
+                Sentuh untuk Memulai
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Audio Control Widget (Floating) -->
+    <div id="audioWidget" class="fixed bottom-6 right-6 z-40 opacity-0 transition-all duration-700 transform translate-y-4">
+        <div class="glass-panel p-3.5 rounded-2xl flex items-center gap-3 shadow-2xl border border-slate-700/40">
+            <button id="btnPlayPause" class="w-10 h-10 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-600/40 flex items-center justify-center text-slate-200 transition-all duration-200">
+                <i data-lucide="play" id="iconPlay" class="w-5 h-5"></i>
+                <i data-lucide="pause" id="iconPause" class="w-5 h-5 hidden"></i>
+            </button>
+            
+            <div class="flex flex-col pr-2">
+                <span class="text-xs font-medium text-slate-200 truncate max-w-[140px]" id="songTitle">Lagu Perpisahan</span>
+                <div class="flex items-center gap-2 text-[10px] text-slate-400">
+                    <span id="audioTime">00:00</span>
+                    <div class="w-12 h-1 bg-slate-800 rounded-full overflow-hidden">
+                        <div id="audioProgress" class="h-full bg-slate-400 w-0 transition-all duration-300"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audio Visualizer Bars -->
+            <div id="visualizer" class="flex items-end gap-0.5 h-5 px-1">
+                <div class="w-1 bg-slate-500 rounded-full h-2 animate-pulse"></div>
+                <div class="w-1 bg-slate-400 rounded-full h-4 animate-pulse delay-75"></div>
+                <div class="w-1 bg-slate-600 rounded-full h-3 animate-pulse delay-150"></div>
+                <div class="w-1 bg-slate-400 rounded-full h-5 animate-pulse delay-100"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Copy Notification -->
+    <div id="toast" class="fixed top-6 right-6 z-50 transform translate-y-[-100px] opacity-0 transition-all duration-500 glass-panel px-4 py-3 rounded-xl border border-slate-700/50 flex items-center gap-3 text-xs text-slate-200 shadow-2xl">
+        <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+        <span>Teks telah berhasil disalin ke clipboard.</span>
+    </div>
+
+    <!-- Main Content Container -->
+    <main class="relative z-10 max-w-3xl mx-auto px-6 py-20 md:py-32">
+        
+        <!-- Header / Intro -->
+        <header class="text-center mb-20 space-y-4 opacity-0 animate-fade-in" id="headerSection">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/40 border border-slate-700/40 text-[11px] text-slate-400 tracking-widest uppercase">
+                <span class="w-1.5 h-1.5 rounded-full bg-slate-400 animate-ping"></span>
+                Suara Hati & Sunyi
+            </div>
+            <h1 class="font-serif text-3xl md:text-5xl font-light tracking-tight text-glow text-slate-100">
+                Untaian Kata Yang Tak Sempat Terucap
+            </h1>
+            <p class="text-xs md:text-sm text-slate-500 font-light max-w-md mx-auto">
+                Kisah tentang merelakan, belajar memahami, dan mendoakan kebahagiaan walau tak lagi bersama.
+            </p>
+        </header>
+
+        <!-- Main Narrative Content -->
+        <article class="space-y-12 md:space-y-16 font-serif text-lg md:text-2xl leading-relaxed font-light text-slate-300">
+
+            <!-- Paragraph 1 -->
+            <div class="quote-block glass-panel p-6 md:p-8 rounded-2xl border-l-2 border-slate-600/50 hover:border-slate-400 transition-all duration-500 group relative">
+                <p class="group-hover:text-slate-100 transition-colors duration-300">
+                    "Maybe one day, her new guy will repost something like, <span class="italic text-slate-200">"if your past failed to treat you the way you deserve, let me do it."</span> And maybe he'll mean every word of it."
+                </p>
+            </div>
+
+            <!-- Paragraph 2 -->
+            <div class="quote-block space-y-6">
+                <p class="text-slate-400 italic text-base md:text-xl border-l border-slate-800 pl-4">
+                    But he'll never know the whole story.
+                </p>
+                <p class="leading-relaxed">
+                    He'll never know how much I loved that girl, how many times I prayed and asked God to let her be my last.
+                </p>
+                <p class="leading-relaxed">
+                    He'll never know how she was the person I wanted to grow with, the person I kept choosing even when things got difficult.
+                </p>
+            </div>
+
+            <!-- Paragraph 3 -->
+            <div class="quote-block glass-panel p-6 md:p-8 rounded-2xl border-r-2 border-slate-600/50 hover:border-slate-400 transition-all duration-500">
+                <p>
+                    I loved every part of her, even the parts she tried to hide, even the flaws she probably thought made her difficult to love. I saw them, and I still stayed.
+                </p>
+            </div>
+
+            <!-- Paragraph 4 -->
+            <div class="quote-block space-y-6">
+                <p class="leading-relaxed">
+                    He'll never know how many nights I spent staring at the ceiling, overthinking everything, trying to figure out what I could do differently just to make us work.
+                </p>
+                <p class="leading-relaxed">
+                    He'll never know how many times I swallowed my pride, how many times I tried to understand even when I was hurting too, or how many times I blamed myself for the things I could've handled better.
+                </p>
+            </div>
+
+            <!-- Paragraph 5 (Regrets & Mistakes) -->
+            <div class="quote-block glass-panel p-6 md:p-8 rounded-2xl border-slate-700/40 bg-slate-900/40 space-y-4">
+                <p class="leading-relaxed text-slate-300">
+                    He won't know about the mistakes I made either. How sometimes I let my anger speak for me, brought up things from the past when we were already dealing with something new, reacted without thinking, and became a version of myself I'm not proud of.
+                </p>
+                <p class="leading-relaxed text-slate-400">
+                    He won't know how much I tried to fix things after realizing I was wrong, or how badly I wished I had understood everything sooner.
+                </p>
+            </div>
+
+            <!-- Paragraph 6 -->
+            <div class="quote-block">
+                <p class="text-xl md:text-2xl text-slate-200 italic font-normal">
+                    He'll never know how much of my own peace I gave just trying to hold on to what we had.
+                </p>
+            </div>
+
+            <!-- Paragraph 7 (Acceptance) -->
+            <div class="quote-block space-y-6">
+                <p class="text-slate-400">
+                    And maybe he doesn't need to know.
+                </p>
+                <p class="leading-relaxed">
+                    Because he's going to have his own story with her, and I hope he treats her with the love, patience, and understanding I sometimes failed to give her. I hope he gives her the kind of peace I wanted her to have, even if I couldn't always give it myself.
+                </p>
+            </div>
+
+            <!-- Paragraph 8 -->
+            <div class="quote-block glass-panel p-6 md:p-8 rounded-2xl border-l-2 border-amber-500/30">
+                <p class="leading-relaxed">
+                    So if one day I see them happy, I won't compete with that. I'll just quietly smile and wish them the best.
+                </p>
+                <p class="leading-relaxed mt-4 text-slate-200">
+                    Because no matter how much our story hurt me, I still want her to be happy.
+                </p>
+            </div>
+
+            <!-- Paragraph 9 (Hardest Realization) -->
+            <div class="quote-block">
+                <p class="leading-relaxed text-slate-200">
+                    And maybe that's the hardest part—knowing I once prayed for her to be my last, and now I have to learn how to genuinely pray that she finds happiness, even if it's with someone else.
+                </p>
+            </div>
+
+            <!-- Stanza Final Poetry Highlight -->
+            <div class="quote-block py-12 my-12 text-center space-y-4 border-y border-slate-800/80">
+                <p class="text-slate-400 tracking-wider font-sans text-xs uppercase">Renungan Akhir</p>
+                <div class="font-serif text-2xl md:text-4xl text-slate-100 space-y-2 leading-tight">
+                    <p class="text-slate-400">the grief doesn't go away</p>
+                    <p class="text-slate-400">the grief doesn't shrink</p>
+                    <p class="text-slate-300">the grief stays</p>
+                    <p class="text-glow highlight-text font-normal pt-4 text-3xl md:text-5xl">and we grow.</p>
+                </div>
+            </div>
+
+        </article>
+
+        <!-- Actions Footer -->
+        <footer class="mt-16 flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-slate-800/60 text-xs text-slate-500">
+            <button id="btnCopyAll" class="glass-panel px-5 py-2.5 rounded-xl hover:text-slate-200 hover:border-slate-600 transition-all duration-300 flex items-center gap-2">
+                <i data-lucide="copy" class="w-4 h-4"></i>
+                <span>Salin Teks Lengkap</span>
+            </button>
+            <p class="font-light">Dibuat dengan rasa & keikhlasan.</p>
+        </footer>
+
+    </main>
+
+    <!-- YouTube IFrame API Script -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    
+    <script>
+        // --- Initialize Lucide Icons ---
+        lucide.createIcons();
+
+        // --- Global Variables ---
+        let player;
+        let isPlaying = false;
+        let updateInterval;
+
+        // --- YouTube API Ready Function ---
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('youtube-player', {
+                height: '0',
+                width: '0',
+                videoId: '1YOzRL2Iayk', // Target YouTube ID from user link
+                playerVars: {
+                    'autoplay': 0,
+                    'controls': 0,
+                    'loop': 1,
+                    'playlist': '1YOzRL2Iayk'
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            // Player is ready
+        }
+
+        function onPlayerStateChange(event) {
+            if (event.data == YT.PlayerState.PLAYING) {
+                isPlaying = true;
+                updateAudioControlsUI(true);
+                startProgressTimer();
+            } else {
+                isPlaying = false;
+                updateAudioControlsUI(false);
+                clearInterval(updateInterval);
+            }
+        }
+
+        // --- UI Audio Controls Update ---
+        const btnPlayPause = document.getElementById('btnPlayPause');
+        const iconPlay = document.getElementById('iconPlay');
+        const iconPause = document.getElementById('iconPause');
+        const visualizer = document.getElementById('visualizer');
+        const audioTime = document.getElementById('audioTime');
+        const audioProgress = document.getElementById('audioProgress');
+
+        function updateAudioControlsUI(playing) {
+            if (playing) {
+                iconPlay.classList.add('hidden');
+                iconPause.classList.remove('hidden');
+                visualizer.classList.remove('opacity-30');
+            } else {
+                iconPlay.classList.remove('hidden');
+                iconPause.classList.add('hidden');
+                visualizer.classList.add('opacity-30');
+            }
+        }
+
+        function startProgressTimer() {
+            clearInterval(updateInterval);
+            updateInterval = setInterval(() => {
+                if (player && player.getCurrentTime) {
+                    const currentTime = player.getCurrentTime();
+                    const duration = player.getDuration() || 1;
+                    
+                    // Format time
+                    const mins = Math.floor(currentTime / 60);
+                    const secs = Math.floor(currentTime % 60);
+                    audioTime.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    
+                    // Progress bar width
+                    const progressPercent = (currentTime / duration) * 100;
+                    audioProgress.style.width = `${progressPercent}%`;
+                }
+            }, 500);
+        }
+
+        // Play / Pause Toggle
+        btnPlayPause.addEventListener('click', () => {
+            if (!player) return;
+            if (isPlaying) {
+                player.pauseVideo();
+            } else {
+                player.playVideo();
+            }
+        });
+
+        // Enter Overlay Handler
+        const entryOverlay = document.getElementById('entryOverlay');
+        const btnEnter = document.getElementById('btnEnter');
+        const audioWidget = document.getElementById('audioWidget');
+        const headerSection = document.getElementById('headerSection');
+
+        btnEnter.addEventListener('click', () => {
+            // Play YouTube Audio
+            if (player && player.playVideo) {
+                player.playVideo();
+            }
+            
+            // Fade out overlay
+            entryOverlay.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                entryOverlay.style.display = 'none';
+            }, 1000);
+
+            // Reveal Header & Floating Audio Control
+            setTimeout(() => {
+                headerSection.classList.remove('opacity-0');
+                headerSection.classList.add('transition-opacity', 'duration-1000');
+                audioWidget.classList.remove('opacity-0', 'translate-y-4');
+            }, 300);
+        });
+
+        // --- Copy to Clipboard Functionality ---
+        const btnCopyAll = document.getElementById('btnCopyAll');
+        const toast = document.getElementById('toast');
+
+        const fullText = `Maybe one day, her new guy will repost something like, "if your past failed to treat you the way you deserve, let me do it." And maybe he'll mean every word of it.
+But he'll never know the whole story.
+He'll never know how much I loved that girl, how many times I prayed and asked God to let her be my last.
+He'll never know how she was the person I wanted to grow with, the person I kept choosing even when things got difficult.
+I loved every part of her, even the parts she tried to hide, even the flaws she probably thought made her difficult to love. I saw them, and I still stayed.
+He'll never know how many nights I spent staring at the ceiling, overthinking everything, trying to figure out what I could do differently just to make us work.
+He'll never know how many times I swallowed my pride, how many times I tried to understand even when I was hurting too, or how many times I blamed myself for the things I could've handled better.
+He won't know about the mistakes I made either. How sometimes I let my anger speak for me, brought up things from the past when we were already dealing with something new, reacted without thinking, and became a version of myself I'm not proud of.
+He won't know how much I tried to fix things after realizing I was wrong, or how badly I wished I had understood everything sooner.
+He'll never know how much of my own peace I gave just trying to hold on to what we had.
+And maybe he doesn't need to know.
+Because he's going to have his own story with her, and I hope he treats her with the love, patience, and understanding I sometimes failed to give her. I hope he gives her the kind of peace I wanted her to have, even if I couldn't always give it myself.
+So if one day I see them happy, I won't compete with that. I'll just quietly smile and wish them the best.
+Because no matter how much our story hurt me, I still want her to be happy.
+And maybe that's the hardest part—knowing I once prayed for her to be my last, and now I have to learn how to genuinely pray that she finds happiness, even if it's with someone else.
+
+the grief doesn't go away
+the grief doesn't shrink
+the grief stays
+
+and we grow.`;
+
+        btnCopyAll.addEventListener('click', () => {
+            // ExecCommand Fallback for iframe safety
+            const textarea = document.createElement('textarea');
+            textarea.value = fullText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            // Show Toast
+            toast.classList.remove('translate-y-[-100px]', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-[-100px]', 'opacity-0');
+            }, 3000);
+        });
+
+        // --- Ambient Background Canvas Animation (Rain & Subtle Stars) ---
+        const canvas = document.getElementById('ambientCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height;
+        let raindrops = [];
+        let stars = [];
+
+        function resizeCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initElements();
+        }
+
+        function initElements() {
+            raindrops = [];
+            stars = [];
+
+            // Rain drops count based on width
+            const dropCount = Math.floor(width / 12);
+            for (let i = 0; i < dropCount; i++) {
+                raindrops.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    length: Math.random() * 20 + 10,
+                    speed: Math.random() * 2 + 1,
+                    opacity: Math.random() * 0.2 + 0.05
+                });
+            }
+
+            // Stars
+            const starCount = Math.floor(width / 20);
+            for (let i = 0; i < starCount; i++) {
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    size: Math.random() * 1.5,
+                    opacity: Math.random() * 0.4 + 0.1,
+                    pulseSpeed: Math.random() * 0.01 + 0.003
+                });
+            }
+        }
+
+        function animateCanvas() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw Stars
+            stars.forEach(star => {
+                star.opacity += star.pulseSpeed;
+                if (star.opacity > 0.5 || star.opacity < 0.1) {
+                    star.pulseSpeed = -star.pulseSpeed;
+                }
+                ctx.fillStyle = `rgba(255, 255, 255, ${Math.abs(star.opacity)})`;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw Rain
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            raindrops.forEach(drop => {
+                ctx.moveTo(drop.x, drop.y);
+                ctx.lineTo(drop.x - drop.length * 0.1, drop.y + drop.length);
+
+                drop.y += drop.speed;
+                drop.x -= drop.speed * 0.1;
+
+                if (drop.y > height) {
+                    drop.y = -drop.length;
+                    drop.x = Math.random() * width;
+                }
+            });
+            ctx.stroke();
+
+            requestAnimationFrame(animateCanvas);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            animateCanvas();
+        });
+    </script>
+</body>
+</html>
